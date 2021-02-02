@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { fetchWalks, createWalk } from '../lib/store';
-import SignIn from '../components/SignIn';
+import { getWalks, createWalk } from '../lib/store';
 import { useAuth } from '../lib/auth';
+import Distance, { oneMile } from '../components/Distance';
+import Header from '../components/Header';
 
 function total(walks) {
   return walks.reduce((acc, w) => acc + w.distance, 0);
@@ -13,25 +14,43 @@ export default function HomePage() {
 
   const auth = useAuth();
 
+  // Load walks on page load
   useEffect(() => {
     (async () => {
-      const w = await fetchWalks();
+      const w = await getWalks();
       setWalks(w);
     })();
   }, []);
 
+  // Update walks when auth state changes.
+  useEffect(() => {
+    if (!auth.user) {
+      setWalks([]);
+      return;
+    }
+
+    (async () => {
+      const w = await getWalks();
+      setWalks(w);
+    })();
+  }, [auth.user]);
+
+  /**
+   * Handle creating a new walk when the form is submitted.
+   *
+   * @param {SubmitEvent} e
+   */
   async function handleSubmit(e) {
     e.preventDefault();
 
+    const unitsMultiplier = auth.user.preferences.units === 'km' ? 1 : oneMile;
+
     const newWalk = {
-      distance: parseFloat($distance.current.value),
+      distance: parseFloat($distance.current.value / unitsMultiplier),
       date: new Date(),
-      user_id: auth.user.uid,
     };
 
-    console.log({ newWalk });
-
-    const walk = await createWalk(newWalk);
+    const walk = await createWalk(auth.user.id, newWalk);
     if (!walk.length) {
       return;
     }
@@ -41,14 +60,15 @@ export default function HomePage() {
 
   return (
     <>
-      <nav>
-        <SignIn />
-      </nav>
+      <Header />
+
       <main className="Home">
         <h1>Walks</h1>
         <ul>
           {walks.map((walk) => (
-            <li key={walk.id}>{walk.distance}</li>
+            <li key={walk.id}>
+              <Distance km={walk.distance} />
+            </li>
           ))}
         </ul>
 
@@ -72,7 +92,9 @@ export default function HomePage() {
         )}
 
         <p>
-          <strong>Total distance: {total(walks)}</strong>
+          <strong>
+            Total distance: <Distance km={total(walks)} />
+          </strong>
         </p>
       </main>
     </>

@@ -1,10 +1,10 @@
 import { useAuth } from '../lib/auth';
 
-export default function SignIn() {
+export default function Auth() {
   const auth = useAuth();
 
   return (
-    <div className="SignIn">
+    <div className="Auth">
       {auth.user ? (
         <>
           <p>{auth.user.email}</p>
